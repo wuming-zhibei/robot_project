@@ -1,2 +1,4 @@
 ubuntu/
 .vscode/
+# VS Code cache and workspace files
+**/.vscode/
