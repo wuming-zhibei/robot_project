@@ -6,15 +6,16 @@ import numpy as np
 from insightface.app import FaceAnalysis
 
 
+# 人脸照片所在目录
 BASE_DIR = Path(__file__).resolve().parent
 FACE_DIR = BASE_DIR / "faces"
 
-# 初始测试阈值，不代表已经验证可靠
+# 人脸相似度阈值
 SIMILARITY_THRESHOLD = 0.40
 
 
 def load_model():
-    """加载人脸检测与特征提取模型。"""
+    """加载人脸检测和特征提取模型。"""
     model = FaceAnalysis(
         name="buffalo_l",
         providers=["CPUExecutionProvider"],
@@ -24,7 +25,7 @@ def load_model():
 
 
 def get_embedding(model, image_path):
-    """从参考照片提取人脸特征。"""
+    """提取参考照片中的人脸特征。"""
     image = cv2.imread(str(image_path))
 
     if image is None:
@@ -34,20 +35,18 @@ def get_embedding(model, image_path):
     faces = model.get(image)
 
     if len(faces) != 1:
-        print(
-            f"{image_path.name} 应当包含一张清晰人脸，"
-            f"实际检测到 {len(faces)} 张"
-        )
+        print(f"{image_path.name} 应当包含一张人脸")
         return None
 
     return faces[0].normed_embedding
 
 
 def load_database(model):
-    """读取 person_a 和 person_b 的参考照片。"""
+    """读取参考照片，建立人员特征数据库。"""
     database = {}
 
     for person_id in ("person_a", "person_b"):
+        #路径拼接
         person_dir = FACE_DIR / person_id
 
         if not person_dir.is_dir():
@@ -57,33 +56,32 @@ def load_database(model):
         embeddings = []
 
         for path in person_dir.iterdir():
-            if path.suffix.lower() not in {
+            if path.suffix.lower() not in (
                 ".jpg", ".jpeg", ".png", ".bmp", ".webp"
-            }:
+            ):
                 continue
-
+            #获取这个人的人脸特征
             embedding = get_embedding(model, path)
-
+            #加到总的里面
             if embedding is not None:
                 embeddings.append(embedding)
 
         if embeddings:
             database[person_id] = embeddings
-            print(f"{person_id}：已加载 {len(embeddings)} 张参考照片")
-        else:
-            print(f"{person_id}：没有可用的参考照片")
+            print(f"{person_id}：加载了 {len(embeddings)} 张照片")
 
     return database
 
 
 def recognize_face(embedding, database):
-    """比较当前人脸与所有身份参考特征。"""
+    """根据人脸特征判断人员身份。"""
     best_person = None
     best_score = -1.0
 
     for person_id, reference_embeddings in database.items():
-        # 对同一身份的多张照片分别比较，取最高相似度
+        # 计算当前人脸与该身份所有参考照片的相似度，score保存的是当前人脸与这个人的所有参考照片中，最高的相似度。
         score = max(
+            #由于 InsightFace 返回的是归一化特征向量，所以点积可以用来衡量两个向量的余弦相似度：相似度越接近 1，说明两个特征越相似。
             float(np.dot(embedding, reference))
             for reference in reference_embeddings
         )
@@ -96,90 +94,3 @@ def recognize_face(embedding, database):
         return "unknown", best_score
 
     return best_person, best_score
-
-
-def main():
-    model = load_model()
-    database = load_database(model)
-
-    if not database:
-        print("错误：没有加载到任何有效参考照片。")
-        return
-
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-
-    if not cap.isOpened():
-        print("错误：无法打开摄像头。")
-        return
-
-    print("身份识别已启动，按 q 退出。")
-
-    try:
-        while True:
-            ret, frame = cap.read()
-
-            if not ret:
-                print("无法读取摄像头画面。")
-                break
-
-            faces = model.get(frame)
-
-            for face in faces:
-                x1, y1, x2, y2 = map(int, face.bbox)
-
-                person_id, score = recognize_face(
-                    face.normed_embedding,
-                    database,
-                )
-
-                if person_id == "person_a":
-                    robot_id = "Robot A"
-                elif person_id == "person_b":
-                    robot_id = "Robot B"
-                else:
-                    robot_id = "Unknown"
-
-                label = f"{robot_id} ({score:.2f})"
-
-                color = (
-                    (0, 255, 0)
-                    if person_id != "unknown"
-                    else (0, 0, 255)
-                )
-
-                cv2.rectangle(
-                    frame, (x1, y1), (x2, y2), color, 2
-                )
-
-                cv2.putText(
-                    frame,
-                    label,
-                    (x1, max(y1 - 10, 20)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.65,
-                    color,
-                    2,
-                )
-
-            cv2.putText(
-                frame,
-                f"Faces: {len(faces)}",
-                (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 255, 255),
-                2,
-            )
-
-            cv2.imshow("Face Recognition", frame)
-
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
-
-    finally:
-        cap.release()
-        cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    main()
