@@ -5,7 +5,9 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist, Point
 
 class Ros2Bridge(Node):
+    
     def __init__(self):
+        super().__init__("fastapi_cmd_vel_bridge")
         # 分别保存 A、B 两台机器人的速度指令
         self.linear_x = {"a": 0.0, "b": 0.0}
         self.angular_z = {"a": 0.0, "b": 0.0}

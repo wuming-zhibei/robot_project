@@ -2,21 +2,27 @@ import threading
 
 
 class Robot:
-    def __init__(self,robot_id):
+    def __init__(self, robot_id):
+        # 机器人编号
+        self.robot_id = robot_id
+
         # 机器人基本状态
         self.online = False
         self.running = False
         self.direction = "stop"
         self.speed = 0
+
         # Webots 通过 ROS 2 发送的实际位置
         self.position = {
             "x": 0,
             "y": 0,
             "z": 0,
-        } 
+        }
+
         # 当前任务名称
         self.current_task = None
-        #一个开关,不是线程，只是来控制线程
+
+        # 控制线程的事件对象
         self.stop_event = threading.Event()
 
     def get_status(self):
@@ -27,11 +33,10 @@ class Robot:
             "running": self.running,
             "direction": self.direction,
             "speed": self.speed,
-            #修改副本不会意外改变机器人内部保存的位置
             "position": self.position.copy(),
             "current_task": self.current_task,
         }
-    
+
     def move(self, direction, speed):
         """更新机器人的运动状态。"""
         self.stop_event.clear()
@@ -56,7 +61,7 @@ class Robot:
             "right": ("right", 30),
             "square": ("forward", 50),
         }
-        #如果不是支持的任务，就主动报错，阻止程序继续执行
+
         if task not in task_settings:
             raise ValueError(f"Unsupported task: {task}")
 
@@ -71,7 +76,8 @@ class Robot:
         self.direction = "stop"
         self.speed = 0
         self.current_task = None
-        
+
+
 # 创建两台独立的机器人对象
 robot_a = Robot("a")
 robot_b = Robot("b")
