@@ -18,7 +18,7 @@ const char* WIFI_PASSWORD = "";
 
 // Windows 电脑的 FastAPI 地址
 const char* API_URL =
-    "http://192.168.93.55:8001/display-status";
+    "";
 
 // 在 OLED 上显示一条提示
 void showMessage(const char* line1, const char* line2) {
