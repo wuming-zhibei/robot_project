@@ -1,4 +1,6 @@
-
+__pycache__/
+*.py[cod]
+.venv/
 .vscode/
 # VS Code cache and workspace files
 **/.vscode/
